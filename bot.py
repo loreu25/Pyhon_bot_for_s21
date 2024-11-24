@@ -16,8 +16,6 @@ with open('config.json', 'r') as config_file:
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
-bot = telebot.TeleBot('7491331608:AAH5aqRaIRfJfdloIH2JyBqeH2cLiH2E2XQ')
-
 current_category = None
 
 @bot.message_handler(content_types=['text'])
