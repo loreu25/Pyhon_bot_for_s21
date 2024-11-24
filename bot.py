@@ -8,6 +8,14 @@ os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 import telebot
 from db import db
 from telebot import types
+import json
+
+with open('config.json', 'r') as config_file:
+    config = json.load(config_file)
+    TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
+
+bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+
 bot = telebot.TeleBot('7491331608:AAH5aqRaIRfJfdloIH2JyBqeH2cLiH2E2XQ')
 
 current_category = None
