@@ -1,31 +1,40 @@
 import os
 import certifi
-
-# Установить корректный путь к сертификатам
-os.environ['SSL_CERT_FILE'] = certifi.where()
-os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
-
 import telebot
 from db import db
 from telebot import types
 import json
+import time
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
 with open('config.json', 'r') as config_file:
     config = json.load(config_file)
     TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
 
-bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+if not TELEGRAM_BOT_TOKEN:
+    raise ValueError("TELEGRAM_BOT_TOKEN отсутствует или пустой!")
 
+bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+print("Бот запущен")
 current_category = None
 
+def get_main_keyboard():
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    keyboard.add(
+        types.KeyboardButton(text="Внести Red flag"),
+        types.KeyboardButton(text="Внести Green flag"),
+        types.KeyboardButton(text="Найти peer`a")
+    )
+    return keyboard
 @bot.message_handler(content_types=['text'])
 def get_text_message(message):
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    key_add_red = types.KeyboardButton(text="Внести Red flag")
-    key_add_green = types.KeyboardButton(text="Внести Green flag")
-    keyboard.add(key_add_red, key_add_green)
-    key_find_peer = types.KeyboardButton(text="Найти peer`a")
-    keyboard.add(key_find_peer)
+    logging.info(f"Получено сообщение: {message.text} от {message.from_user.id}")
+    keyboard = get_main_keyboard()
     if message.text == "/start":
         bot.send_message(
             message.from_user.id,
@@ -53,45 +62,58 @@ def get_text_message(message):
             reply_markup=types.ReplyKeyboardRemove()
         )
         bot.register_next_step_handler(message, find_category)
-
-def add_flag(message, category):
-    nickname = message.text
-    db.add_to_flags(nickname, category)
-    bot.send_message(
-        message.from_user.id,
-        f"Ник '{nickname}' успешно добавлен в категорию '{category}'!"
-    )
-    ask_for_more(message)
-
-def find_category(message):
-    nickname = message.text
-    category = db.find_peer(nickname)
-    if category:
-        bot.send_message(
-            message.from_user.id,
-            f"Ник '{nickname}' принадлежит к категории: {category}."
-        )
     else:
         bot.send_message(
             message.from_user.id,
-             f"Пользователь с ником '{nickname}' не найден в базе."
+            "Я вас не понял. Введите /start, чтобы открыть меню."
+        )
+
+def add_flag(message, category):
+    try:
+        nickname = message.text
+        db.add_to_flags(nickname, category)
+        bot.send_message(
+            message.from_user.id,
+            f"Ник '{nickname}' успешно добавлен в категорию '{category}'!"
+        )
+    except Exception as e:
+        bot.send_message(
+            message.from_user.id,
+            f"Ошибка при добавлении в базу: {e}"
+        )
+    ask_for_more(message)
+
+def find_category(message):
+    try:
+        nickname = message.text
+        category = db.find_peer(nickname)
+        if category:
+            bot.send_message(
+                message.from_user.id,
+                f"Ник '{nickname}' принадлежит к категории: {category}."
+            )
+        else:
+            bot.send_message(
+                message.from_user.id,
+                 f"Пользователь с ником '{nickname}' не найден в базе."
+            )
+    except Exception as e:
+        bot.send_message(
+            message.from_user.id,
+            f"Ошибка при поиске в базе: {e}"
         )
     ask_for_more(message)
 
 def ask_for_more(message):
-    # Вопрос "Что-то еще?" и возврат клавиатуры
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    key_add_red = types.KeyboardButton(text="Внести Red flag")
-    key_add_green = types.KeyboardButton(text="Внести Green flag")
-    keyboard.add(key_add_red, key_add_green)
-    key_find_peer = types.KeyboardButton(text="Найти peer`a")
-    keyboard.add(key_find_peer)
-
     bot.send_message(
         message.from_user.id,
         "Что-то еще?",
-        reply_markup=keyboard
+        reply_markup=get_main_keyboard()
     )
 
-
-bot.polling(none_stop=True)
+while True:
+    try:
+        bot.polling(none_stop=True)
+    except Exception as e:
+        logging.error(f"Ошибка в работе бота: {e}")
+        time.sleep(5)

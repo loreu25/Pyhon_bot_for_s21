@@ -41,6 +41,7 @@ def find_peer(nickname):
             password=DB_PASSWORD,
             port=DB_PORT
         )
+
         cursor = connection.cursor()
         query = "SELECT category FROM flags WHERE nickname = %s;"
         cursor.execute(query, (nickname,))
