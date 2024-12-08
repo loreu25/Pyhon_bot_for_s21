@@ -51,7 +51,22 @@ def find_peer(nickname):
         if result:
             return result[0]
         else:
+            print(f"Сообщение от пользователя")
             return None
     except Exception as e:
         print(f"Ошибка при поиске категории: {e}")
         return None
+
+
+def get_all_flags():
+    with psycopg2.connect(
+        host=DB_HOST,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        port=DB_PORT
+    ) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id, nickname, category FROM flags")
+            rows = cursor.fetchall()
+            return [{"id": row[0], "nickname": row[1], "category": row[2]} for row in rows]

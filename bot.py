@@ -9,6 +9,8 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+ADMIN_IDS = [843057860]
+
 os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
@@ -110,6 +112,27 @@ def ask_for_more(message):
         "Что-то еще?",
         reply_markup=get_main_keyboard()
     )
+
+@bot.message_handler(commands=['view_db'])
+def view_db(message):
+    # Проверка, является ли пользователь админом
+    if message.from_user.id not in ADMIN_IDS:
+        bot.reply_to(message, "У вас нет доступа к этой команде.")
+        return
+
+    # Получение данных из базы
+    try:
+        records = db.get_all_flags()  # Создай функцию, которая возвращает записи из таблицы
+        if records:
+            response = "\n".join(
+                [f"ID: {row['id']}, Ник: {row['nickname']}, Категория: {row['category']}" for row in records]
+            )
+        else:
+            response = "База данных пуста."
+    except Exception as e:
+        response = f"Ошибка при работе с базой: {str(e)}"
+
+    bot.reply_to(message, response)
 
 while True:
     try:
