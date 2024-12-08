@@ -6,6 +6,7 @@ from telebot import types
 import json
 import time
 import logging
+import psycopg2
 
 logging.basicConfig(level=logging.INFO)
 
@@ -115,24 +116,25 @@ def ask_for_more(message):
 
 @bot.message_handler(commands=['view_db'])
 def view_db(message):
-    # Проверка, является ли пользователь админом
     if message.from_user.id not in ADMIN_IDS:
         bot.reply_to(message, "У вас нет доступа к этой команде.")
         return
-
-    # Получение данных из базы
     try:
-        records = db.get_all_flags()  # Создай функцию, которая возвращает записи из таблицы
+        records = db.get_all_flags()
         if records:
             response = "\n".join(
                 [f"ID: {row['id']}, Ник: {row['nickname']}, Категория: {row['category']}" for row in records]
             )
         else:
             response = "База данных пуста."
+    except psycopg2.Error as db_error:
+        logging.error(f"Ошибка базы данных: {db_error}")
+        response = "Ошибка при подключении к базе данных."
     except Exception as e:
-        response = f"Ошибка при работе с базой: {str(e)}"
-
-    bot.reply_to(message, response)
+        logging.error(f"Неизвестная ошибка: {e}")
+        response = "Произошла ошибка. Попробуйте позже."
+    finally:
+        bot.reply_to(message, response)
 
 while True:
     try:
