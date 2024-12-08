@@ -34,7 +34,7 @@ def get_main_keyboard():
         types.KeyboardButton(text="Найти peer`a")
     )
     return keyboard
-@bot.message_handler(content_types=['text'])
+@bot.message_handler(func=lambda message: not message.text.startswith("/"))
 def get_text_message(message):
     logging.info(f"Получено сообщение: {message.text} от {message.from_user.id}")
     keyboard = get_main_keyboard()
