@@ -34,17 +34,20 @@ def get_main_keyboard():
         types.KeyboardButton(text="Найти peer`a")
     )
     return keyboard
+
+@bot.message_handler(commands=['start'])
+def handle_start(message):
+    logging.info(f"Команда /start от {message.from_user.id}")
+    keyboard = get_main_keyboard()
+    bot.send_message(
+        message.from_user.id,
+        "Выберите действие:",
+        reply_markup=keyboard
+    )
 @bot.message_handler(func=lambda message: not message.text.startswith("/"))
 def get_text_message(message):
     logging.info(f"Получено сообщение: {message.text} от {message.from_user.id}")
-    keyboard = get_main_keyboard()
-    if message.text == "/start":
-        bot.send_message(
-            message.from_user.id,
-            "Выберите действие:",
-            reply_markup=keyboard
-        )
-    elif message.text == "Внести Red flag":
+    if message.text == "Внести Red flag":
         bot.send_message(
             message.from_user.id,
             "Введите ник для добавления в Red flag:",
@@ -70,6 +73,28 @@ def get_text_message(message):
             message.from_user.id,
             "Я вас не понял. Введите /start, чтобы открыть меню."
         )
+
+@bot.message_handler(commands=['view_db'])
+def view_db(message):
+    if message.from_user.id not in ADMIN_IDS:
+        bot.reply_to(message, "У вас нет доступа к этой команде.")
+        return
+    try:
+        records = db.get_all_flags()
+        if records:
+            response = "\n".join(
+                [f"ID: {row['id']}, Ник: {row['nickname']}, Категория: {row['category']}" for row in records]
+            )
+        else:
+            response = "База данных пуста."
+    except psycopg2.Error as db_error:
+        logging.error(f"Ошибка базы данных: {db_error}")
+        response = "Ошибка при подключении к базе данных."
+    except Exception as e:
+        logging.error(f"Неизвестная ошибка: {e}")
+        response = "Произошла ошибка. Попробуйте позже."
+    finally:
+        bot.reply_to(message, response)
 
 def add_flag(message, category):
     try:
@@ -113,28 +138,6 @@ def ask_for_more(message):
         "Что-то еще?",
         reply_markup=get_main_keyboard()
     )
-
-@bot.message_handler(commands=['view_db'])
-def view_db(message):
-    if message.from_user.id not in ADMIN_IDS:
-        bot.reply_to(message, "У вас нет доступа к этой команде.")
-        return
-    try:
-        records = db.get_all_flags()
-        if records:
-            response = "\n".join(
-                [f"ID: {row['id']}, Ник: {row['nickname']}, Категория: {row['category']}" for row in records]
-            )
-        else:
-            response = "База данных пуста."
-    except psycopg2.Error as db_error:
-        logging.error(f"Ошибка базы данных: {db_error}")
-        response = "Ошибка при подключении к базе данных."
-    except Exception as e:
-        logging.error(f"Неизвестная ошибка: {e}")
-        response = "Произошла ошибка. Попробуйте позже."
-    finally:
-        bot.reply_to(message, response)
 
 while True:
     try:
